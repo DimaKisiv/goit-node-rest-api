@@ -33,6 +33,10 @@ export const Contact = sequelize.define(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    owner: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+    },
   },
   {
     tableName: "contacts",
@@ -40,3 +44,39 @@ export const Contact = sequelize.define(
     timestamps: true,
   }
 );
+
+export const User = sequelize.define(
+  "user",
+  {
+    password: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      unique: true,
+    },
+    subscription: {
+      type: DataTypes.ENUM("starter", "pro", "business"),
+      defaultValue: "starter",
+    },
+    token: {
+      type: DataTypes.STRING,
+      defaultValue: null,
+    },
+  },
+  {
+    tableName: "users",
+    underscored: true,
+    timestamps: true,
+  }
+);
+
+// Associations
+User.hasMany(Contact, {
+  as: "contacts",
+  foreignKey: "owner",
+  onDelete: "CASCADE",
+});
+Contact.belongsTo(User, { as: "ownerUser", foreignKey: "owner" });
