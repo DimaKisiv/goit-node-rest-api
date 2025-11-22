@@ -1,4 +1,4 @@
-import { Contact } from "../db/sequelize.js";
+import { Contact } from "../models/index.js";
 
 async function listContacts(options = {}, userId) {
   const { page, limit, favorite } = options;

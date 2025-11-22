@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 import HttpError from "./HttpError.js";
-import { User } from "../db/sequelize.js";
+import { User } from "../models/index.js";
 
 const authMiddleware = async (req, _res, next) => {
   try {

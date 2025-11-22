@@ -1,6 +1,6 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import { User } from "../db/sequelize.js";
+import { User } from "../models/index.js";
 import HttpError from "../helpers/HttpError.js";
 
 export const register = async (req, res, next) => {
