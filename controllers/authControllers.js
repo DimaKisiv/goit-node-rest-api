@@ -1,5 +1,9 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import {
+  generateAndSaveAvatar,
+  saveUploadedAvatar,
+} from "../helpers/avatarHelper.js";
 import { User } from "../models/index.js";
 import HttpError from "../helpers/HttpError.js";
 
@@ -14,13 +18,38 @@ export const register = async (req, res, next) => {
 
     const hash = await bcrypt.hash(password, 10);
     const user = await User.create({ email, password: hash });
+    const { avatarURL } = await generateAndSaveAvatar(email, user.id);
+    user.avatarURL = avatarURL;
+    await user.save();
 
     res.status(201).json({
       user: {
         email: user.email,
         subscription: user.subscription,
+        avatarURL: user.avatarURL,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateAvatar = async (req, res, next) => {
+  try {
+    const user = req.user;
+    if (!user) {
+      throw HttpError(401, "Not authorized");
+    }
+    const file = req.file;
+    if (!file) {
+      throw HttpError(400, "No file uploaded");
+    }
+
+    const { avatarURL: publicUrl } = await saveUploadedAvatar(file, user.id);
+    user.avatarURL = publicUrl;
+    await user.save();
+
+    res.status(200).json({ avatarURL: publicUrl });
   } catch (err) {
     next(err);
   }
