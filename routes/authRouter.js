@@ -4,6 +4,7 @@ import {
   registerSchema,
   loginSchema,
   updateSubscriptionSchema,
+  resendVerifySchema,
 } from "../schemas/authSchemas.js";
 import {
   register,
@@ -12,6 +13,8 @@ import {
   getCurrent,
   updateSubscription,
   updateAvatar,
+  resendVerification,
+  verifyEmail,
 } from "../controllers/authControllers.js";
 import authMiddleware from "../helpers/authMiddleware.js";
 import upload from "../helpers/uploadMiddleware.js";
@@ -20,8 +23,14 @@ const authRouter = express.Router();
 
 authRouter.post("/register", validateBody(registerSchema), register);
 authRouter.post("/login", validateBody(loginSchema), login);
+authRouter.post(
+  "/verify",
+  validateBody(resendVerifySchema),
+  resendVerification
+);
 authRouter.post("/logout", authMiddleware, logout);
 authRouter.get("/current", authMiddleware, getCurrent);
+authRouter.get("/verify/:verificationToken", verifyEmail);
 authRouter.patch(
   "/subscription",
   authMiddleware,

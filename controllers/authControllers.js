@@ -1,11 +1,13 @@
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { nanoid } from "nanoid";
 import {
   generateAndSaveAvatar,
   saveUploadedAvatar,
 } from "../helpers/avatarHelper.js";
 import { User } from "../models/index.js";
 import HttpError from "../helpers/HttpError.js";
+import { sendVerificationEmailLink } from "../helpers/mailHelper.js";
 
 export const register = async (req, res, next) => {
   try {
@@ -17,10 +19,22 @@ export const register = async (req, res, next) => {
     }
 
     const hash = await bcrypt.hash(password, 10);
-    const user = await User.create({ email, password: hash });
+    const verificationToken = nanoid();
+    const user = await User.create({
+      email,
+      password: hash,
+      verificationToken,
+      verify: false,
+    });
     const { avatarURL } = await generateAndSaveAvatar(email, user.id);
     user.avatarURL = avatarURL;
     await user.save();
+
+    try {
+      await sendVerificationEmailLink(email, verificationToken);
+    } catch (e) {
+      console.error("Failed to send verification email:", e?.message || e);
+    }
 
     res.status(201).json({
       user: {
@@ -29,6 +43,22 @@ export const register = async (req, res, next) => {
         avatarURL: user.avatarURL,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const verifyEmail = async (req, res, next) => {
+  try {
+    const { verificationToken } = req.params;
+    const user = await User.findOne({ where: { verificationToken } });
+    if (!user) {
+      throw HttpError(404, "User not found");
+    }
+    user.verify = true;
+    user.verificationToken = null;
+    await user.save();
+    res.status(200).json({ message: "Verification successful" });
   } catch (err) {
     next(err);
   }
@@ -62,6 +92,9 @@ export const login = async (req, res, next) => {
     if (!user) {
       throw HttpError(401, "Email or password is wrong");
     }
+    if (!user.verify) {
+      throw HttpError(401, "Email not verified");
+    }
     const match = await bcrypt.compare(password, user.password);
     if (!match) {
       throw HttpError(401, "Email or password is wrong");
@@ -81,6 +114,34 @@ export const login = async (req, res, next) => {
         subscription: user.subscription,
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const resendVerification = async (req, res, next) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ message: "missing required field email" });
+    }
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      throw HttpError(404, "User not found");
+    }
+    if (user.verify) {
+      return res
+        .status(400)
+        .json({ message: "Verification has already been passed" });
+    }
+    let token = user.verificationToken;
+    if (!token) {
+      token = nanoid();
+      user.verificationToken = token;
+      await user.save();
+    }
+    await sendVerificationEmailLink(email, token);
+    res.status(200).json({ message: "Verification email sent" });
   } catch (err) {
     next(err);
   }
